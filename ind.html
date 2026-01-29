@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nadine's Love Merge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0d0221;
+            --panel-bg: #1a0b2e;
+            --accent: #ff00ff; /* Magenta */
+            --highlight: #00ffff; /* Cyan */
+            --text-main: #ffffff;
+            --border-width: 4px;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            font-family: 'Press Start 2P', cursive;
+            color: var(--text-main);
+            touch-action: none; /* Mencegah zoom di HP */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* --- RETRO CRT EFFECTS --- */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .glow-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 100px rgba(255, 0, 255, 0.2);
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        /* --- LAYOUT UTAMA --- */
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 95vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+
+        /* --- SCREENS --- */
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0; left: 0;
+            background: var(--bg-dark);
+            transition: opacity 0.5s;
+        }
+
+        .screen.active {
+            display: flex;
+            z-index: 20;
+        }
+
+        /* --- GAME UI --- */
+        #game-ui {
+            display: none; /* Hidden on start */
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #game-ui.active { display: flex; }
+
+        .header-panel {
+            width: 95%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            border: 2px solid var(--highlight);
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 0 15px var(--highlight);
+            border-radius: 8px;
+        }
+
+        .score-box {
+            font-size: 0.8rem;
+            color: var(--highlight);
+        }
+
+        .next-item-box {
+            width: 40px;
+            height: 40px;
+            border: 2px dashed var(--accent);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            background: #000;
+        }
+
+        /* --- CANVAS (GAME AREA) --- */
+        #game-canvas {
+            background: rgba(255, 255, 255, 0.05);
+            border: var(--border-width) solid var(--accent);
+            border-top: none; /* Open top */
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
+            cursor: crosshair;
+            border-radius: 0 0 15px 15px;
+        }
+
+        .guide-line {
+            position: absolute;
+            top: 80px; /* Adjust based on header height */
+            height: 80%;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            display: none;
+        }
+
+        /* --- PHOTO FRAMES --- */
+        .photo-slot {
+            width: 160px;
+            height: 160px;
+            border: 4px solid var(--accent);
+            padding: 5px;
+            background: var(--panel-bg);
+            box-shadow: 8px 8px 0 rgba(0,255,255,0.5);
+            margin-bottom: 30px;
+            object-fit: cover;
+            image-rendering: pixelated;
+        }
+
+        /* --- TEXT STYLES --- */
+        h1 {
+            font-size: 1.8rem;
+            color: var(--highlight);
+            text-shadow: 3px 3px 0 var(--accent);
+            text-align: center;
+            line-height: 1.5;
+            margin: 20px 0;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 15px 30px;
+            font-family: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #990099;
+            transition: transform 0.1s;
+            margin-top: 20px;
+            text-transform: uppercase;
+        }
+
+        .btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #990099;
+        }
+
+        /* --- LONG TEXT AREA --- */
+        .long-text-wrapper {
+            width: 90%;
+            max-height: 250px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid var(--highlight);
+            padding: 15px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 0.7rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            box-shadow: inset 0 0 20px rgba(0,0,0,1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: var(--accent); }
+
+    </style>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+    <div class="glow-overlay"></div>
+
+    <div class="game-container">
+        
+        <div id="start-screen" class="screen active">
+            <img src="https://img.sanishtech.com/u/b525188fe5c0cb9219f282ccfc662c58.png" class="photo-slot" alt="Nadine">
+            <h1>LOVE<br>MERGE</h1>
+            <p style="font-size: 0.6rem; color: #ccc; margin-bottom: 20px; text-align: center; max-width: 300px;">
+                spesial edition <span style="font-size:1.2rem">💖</span>
+            </p>
+            <button class="btn" onclick="startGame()">START GAME</button>
+        </div>
+
+        <div id="game-ui">
+            <div class="header-panel">
+                <div class="score-box">SCORE: <span id="score">0</span></div>
+                <div style="font-size: 0.6rem; color:#888;">TAP TO DROP</div>
+                <div class="next-item-box" id="next-item">🍬</div>
+            </div>
+            <canvas id="game-canvas"></canvas>
+        </div>
+
+        <div id="win-screen" class="screen">
+            <h1 style="font-size: 1.5rem; margin-bottom: 10px;">YOU DID IT SAYANGGG!</h1>
+            <img src="https://img.sanishtech.com/u/1e269a1da48404fad730f6da832adc00.png" class="photo-slot" style="border-color: var(--highlight); box-shadow: 8px 8px 0 var(--accent);">
+            
+            <div class="long-text-wrapper" id="typewriter-area"></div>
+            
+            <button class="btn" onclick="location.reload()" style="margin-top: 20px;">MAIN LAGI</button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        // GANTI TEXT DI SINI
+        const finalMessage = `Aloww aloww alowwwww
+
+yupsss adaa game lagii niii wkwkwkwkwk, yaaaa... walaupun mulai kehabisan ideee, dann gamenya udaa mulai boringg wkwkwkwk, yaa semogaa kedepannyaa bisaa bikin konsep longteks yang terbaruu lagii yaakkkk.. dann semogaa kamu masihh sukaa sama gamee iniii ya sayangggg..
+
+wihhh besokk hari terkahirrr buat ujian praktekk yaaaaa... sumpaaaa kerennn bangettt kamu selamaa ujiann praktekkk, sangattt amaatt niatt dalam segalaa hall nadineeee.. kitaa mulai darii agamaa yaakkk, waahh kamu sumpaa kerennn.. mau belajaarr mengajiii, terusss bisaa ngapalinn dengann secepatt ituuuu.. dannn bisaa praktik sholat secara lancaarrr.. kerenn banget dah pokoknyaaa.. teruss lanjutt keee sosiooo, wahhh sumpaaa infografismu buagusss bangettt, buat dari 0 dan hasilnyaaa sangatt memuaskannn, dari segi design top bangettt, teruss materinyaaa jugaa se lengkap ituuu.. pokoknyaa paket komplit dehh, paling baguss se kelass.. lanjutt ke sejarahh, wah sumpaaa rapii bangett tulisanmuuu, pangeran diponegoroo kereennnn, uprak pertamaa dan hasilnyaa bagus bangettt... laluu ke prancisss, inii sii paling kerenn yaa kayanyaaa kamuuu... sumpaaa dari segi cerita komplitt teruss hafalannn jugaa luancar bangett, dan lebih kerennyaa lagii kamuu bisa aksen bahasa pranciss cuyyyy sampee madame bilang tres bieeennn wowowowwww kerenn bangett sumpaa ak yakin dapet nilai tertinggi di kelasss.. lanjutt ke bahasaa jawaa, ituu ga kalah kerennnyaaa sumpaaa, walaupun kamu jarang berbahasa jawaa, tapii ituu terlihat seperti mbak mbak jawaaa, suaranyaa jelass, enak di dengerr pokoknyaa mantapp bangeyy dehhh.. teruss adaa pp, baruu tadii niii dan aku sangat amat amazed bangett, kerenn. sumpaaa sangatt amat ceriaa dan jelass sekali penjelassnnnyaaaa.. aku banggaa bangett tadii lihatnyaaa kamu bisaaa se kerenn ituu woii, sumpaaw dari segi infografiss udaa sangat niattt, teruss dari segi vidioo gausa di tanya lagii di editnyaa punn properr bangett busettt, paling proper dari 35 anakk yaa nadineee, siapaa lagiii.. pokoknyaa pp kerenn bangett dehhh kamuuu. teruss seni rupaaa, baguss bangett woii hasilnyaaaa kamuuu, kerenn dehhh... worth it sekalii kamu bikinnyaa hasilnyaa baguss bangeettt kerenn sumpaa
+
+teruss mulai uprak yang berkelompokk nihh yaitiu ekoo, sumpaaa sebenernyaaa ekonomi tuu kamuu yang paling banyakk gendongg kelompokkk, dari segi semuanyaaa kamu yang mulaii naddd. dari pda itu jugaa kamu yang mulaii, teruss tabel tabel lainnyaa punn kamu yanh buaattt, dann infografisnyaaa dull kamuu yang buatinnn.. buseett sebenernyaa sii kamu gendongg bangett di ekonomi kali iniii. makasihh banyakk yaa sayangg udaa gendong ekonomii bangett, kerenn bangett sumpaahh dehh kamu maahhhh.. timakasiii banyakk yaaaa.. dann timakasii jugakk bisaa holding hands di tengah tengah banyakk orang heheheee.. lanjutt ke inforrr yeyyy akhirnyaa kita bisa bikin projekk bareng yakk meskipun bedaa kelompokk wkwkwkwk, tapi tetep kerenn deehhh hasilnyaa sangatt memuaskann, dann yaa kamuuu jugaa berusahaa sangatt kerasss tuuu, bisa bisanyaa bikin laporan 2 kelompokkk, hdjsjsjsjsjs sumpaa lain kali jangan begituu yaa sayanggg.. teruss ini jugaa jadi salah satu part terseruu di uprakk siii, di temenin kamu teruss saat projek inii jadinyaa paling spesiall dehh uprak inforr tuu.. teruss lanjutt PKWU busett wkwkkw kitaa berhasil bikin penkek yaaa, kerennnn idee kamu iniii.. kali ke 3 bimin penkekk wkwkwkwkwkw.. dann alhamdulillah kali ini berhasill yaakkk.. kereenn se keren kerennyaa sumpaaa deee.. terusss adaa bahasa indonesiaaa, waaa sumpaaa vidiomu baguss bangett hasilnyaaa veryy prouuddd, editannyaa lhoo kerenn bangett, walaupun pas proses editingg ak gangguu tapii hasilnyaa kerenn dan memuaskann bangett dehhhh.. veryy veryy proudd of uu sayanggg.. terusss olahragaa, yaa walaupunn ga pernah lihat kamu saat uprak olahragaa, tapii hasilnyaa tuu kalau ak lihat keren lhoo, kalau di bandingin sama cewe cewe kamu termasukk yang bisaa olahragaaa, kerenn bangeet deh pokoknyaaa, besokk baruu tuu kitaa bareng bareng lagii yaakkk uprak olahraga terakhirrrr withh uuuuu, terusss ada matematikaaa, yaaa ini seneng banget sii aku bisa bantu kamuuu.. dann kamu kerenn bangettt, jadii orang paling berhasill woii, walaupun semua orang menghujatmu tapii kamu buktiin kalau yang bener ituu kamuu, dan ini juga membuktikan kalau mayoritas tu ga selamanya benarr, itu yang aku sering alami di kehidupankuu.. teruss lastt adaa bahasa inggrisss, kalau ini mah gausaa di tanyaaa, udaa pasti hasilnyaa paling baguss se kelass.. calon mahasiswii undip sasingg inii tehhh, jadii gausaa di ragukann lagiiii.... wkwkwkwkwkwk
+
+intinyaa aku banggaa sr bangga bangganyaa samaa kamuu naddd, apresiasii se tinggi tingginyaa karena kamu telah menamatkan ujian praktek dengan sangatt baikk dan muluss bangett, hasilnyaa pun sangat memuaskannn sekalii.. anww timakasii jugaa yaa buat hari inii, seruu bangett deeee. alhamdulillah cukup lancarr hari inii, dann ga espeknyaaa kamuu ke rumahkuu dan itu di luar plann wkwkwkkw, seruu bangett lagii dee.. alhamdulillah kamu udaa mulai enjoyyy disinii, sedikit demi sedikit yaakk.. seneng banget dehh bisaa mampir lagi kesini kamunyaaa, terimakasihh banyak banyakk yaaa.. akhirnyaa bisa beli tela lagiii.. yaampunn ngrepotinn kamu lagii.. timakasii babyak banyakk yaaaa seseruu itu harii inii naddd..
+
+okeyydee mungkin longteksnyaa terlaluu panjangg jadinyaa yaaa sudaa dde segini duluuu, sekali lagii cobgratss yaa sayanggg.. aku bangggaa babgettt samaa kamuuuu.. tetap semangatt yaaaa, perjuangan belum selesaiii.. lebih semangat dan kuat lagi yaa kedepannnyaaa.. goodnightt sayanggg semkgaa bobo nyenyakk yaaaaa... thankss for todaayyyy.. paipaii paipaiiii, prouddd of uuu sayanggggg
+
+Je t'aimeeee bieennn sayangku cinyakuu, sayang nadine banyak banyakkk🩵💙🩵💙🩵💙🩵💙🩵💙🩵💙🩵💙🩵💙🩵💙`;
+
+        // GAME SETTINGS
+        const GRAVITY = 0.5;
+        const BOUNCE = 0.3; // Bounciness
+        const FRICTION = 0.98; // Air resistance
+        const WALL_BOUNCE = 0.5;
+
+        // LEVELS (Emoji, Size, Score)
+        const LEVELS = [
+            { emoji: "🩵", radius: 15, score: 2 },  // 0
+            { emoji: "💙", radius: 22, score: 4 },  // 1
+            { emoji: "🤍", radius: 30, score: 8 },  // 2
+            { emoji: "♥️", radius: 40, score: 16 }, // 3
+            { emoji: "🩷", radius: 52, score: 32 }, // 4
+            { emoji: "💖", radius: 65, score: 100 } // 5 (WIN)
+        ];
+
+        // --- VARIABLES ---
+        let canvas, ctx;
+        let width, height;
+        let balls = [];
+        let nextLevel = 0;
+        let score = 0;
+        let isGameOver = false;
+        let mouseX = 0;
+        let audioCtx = null;
+        let canDrop = true;
+
+        // --- AUDIO ENGINE ---
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const now = audioCtx.currentTime;
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'drop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'merge') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'win') {
+                osc.type = 'square';
+                // Simple melody
+                [523, 659, 783, 1046].forEach((f, i) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.frequency.value = f;
+                    g.gain.setValueAtTime(0.05, now + i*0.1);
+                    g.gain.linearRampToValueAtTime(0, now + i*0.1 + 0.3);
+                    o.start(now + i*0.1);
+                    o.stop(now + i*0.1 + 0.3);
+                });
+            }
+        }
+
+        // --- GAME LOGIC ---
+        function startGame() {
+            initAudio();
+            document.getElementById('start-screen').classList.remove('active');
+            document.getElementById('game-ui').classList.add('active');
+            
+            canvas = document.getElementById('game-canvas');
+            ctx = canvas.getContext('2d');
+            
+            // Set Canvas Size based on container
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Input handlers
+            canvas.addEventListener('mousemove', (e) => updateMouse(e.clientX));
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                updateMouse(e.touches[0].clientX);
+            }, {passive: false});
+            
+            canvas.addEventListener('click', dropBall);
+            canvas.addEventListener('touchend', dropBall);
+
+            // Randomize first item
+            nextLevel = Math.floor(Math.random() * 2); // Start with level 0 or 1
+            updateNextPreview();
+
+            // Start Loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            const header = document.querySelector('.header-panel');
+            // Calculate available height
+            const h = container.clientHeight - header.clientHeight - 40; 
+            
+            canvas.width = container.clientWidth * 0.95;
+            canvas.height = h;
+            width = canvas.width;
+            height = canvas.height;
+            mouseX = width / 2;
+        }
+
+        function updateMouse(clientX) {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = clientX - rect.left;
+            // Clamp
+            if (mouseX < 20) mouseX = 20;
+            if (mouseX > width - 20) mouseX = width - 20;
+        }
+
+        function updateNextPreview() {
+            document.getElementById('next-item').textContent = LEVELS[nextLevel].emoji;
+        }
+
+        function dropBall(e) {
+            if (isGameOver || !canDrop) return;
+            
+            // Prevent spamming
+            canDrop = false;
+            setTimeout(() => { canDrop = true; }, 500);
+
+            playSound('drop');
+
+            // Create new ball
+            balls.push({
+                x: mouseX,
+                y: 30, // Start near top
+                vx: 0,
+                vy: 0,
+                level: nextLevel,
+                radius: LEVELS[nextLevel].radius,
+                emoji: LEVELS[nextLevel].emoji,
+                mass: LEVELS[nextLevel].radius, // Simple mass approximation
+                id: Math.random()
+            });
+
+            // Prepare next
+            nextLevel = Math.floor(Math.random() * 3); // Levels 0, 1, 2 only for drops
+            updateNextPreview();
+        }
+
+        function gameLoop() {
+            if (isGameOver) return;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw guideline
+            ctx.beginPath();
+            ctx.moveTo(mouseX, 20);
+            ctx.lineTo(mouseX, height);
+            ctx.strokeStyle = "rgba(255,255,255,0.1)";
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Physics Update & Draw
+            updatePhysics();
+            drawBalls();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updatePhysics() {
+            for (let i = 0; i < balls.length; i++) {
+                let b = balls[i];
+
+                // Gravity
+                b.vy += GRAVITY;
+                b.vx *= FRICTION;
+                b.vy *= FRICTION;
+
+                // Move
+                b.x += b.vx;
+                b.y += b.vy;
+
+                // Wall Collisions
+                if (b.x - b.radius < 0) {
+                    b.x = b.radius;
+                    b.vx = -b.vx * WALL_BOUNCE;
+                } else if (b.x + b.radius > width) {
+                    b.x = width - b.radius;
+                    b.vx = -b.vx * WALL_BOUNCE;
+                }
+
+                if (b.y + b.radius > height) {
+                    b.y = height - b.radius;
+                    b.vy = -b.vy * BOUNCE;
+                }
+            }
+
+            // Ball to Ball Collisions (Impulse Resolution & Merge Check)
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    resolveCollision(balls[i], balls[j], i, j);
+                }
+            }
+        }
+
+        function resolveCollision(b1, b2, idx1, idx2) {
+            const dx = b2.x - b1.x;
+            const dy = b2.y - b1.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const minDist = b1.radius + b2.radius;
+
+            if (dist < minDist) {
+                // MERGE CHECK
+                if (b1.level === b2.level) {
+                    // Only merge if not already max level
+                    if (b1.level < LEVELS.length - 1) {
+                        mergeBalls(idx1, idx2, b1.x + dx/2, b1.y + dy/2, b1.level + 1);
+                        return; // Stop processing these balls
+                    } else {
+                        // WIN CONDITION: Two Hearts merged (or just reaching Heart depending on difficulty)
+                        // Let's set win on CREATING the Heart (Level 5)
+                        // Logic moved to mergeBalls function
+                    }
+                }
+
+                // PHYSICS RESPONSE (Push apart)
+                const angle = Math.atan2(dy, dx);
+                const sin = Math.sin(angle);
+                const cos = Math.cos(angle);
+
+                // Overlap correction
+                const overlap = minDist - dist;
+                const correctX = (overlap / 2) * cos;
+                const correctY = (overlap / 2) * sin;
+
+                b1.x -= correctX;
+                b1.y -= correctY;
+                b2.x += correctX;
+                b2.y += correctY;
+
+                // Velocity exchange (simple elasticish)
+                const v1 = Math.sqrt(b1.vx * b1.vx + b1.vy * b1.vy);
+                const v2 = Math.sqrt(b2.vx * b2.vx + b2.vy * b2.vy);
+                
+                // Very basic separation force
+                const force = 0.5; // push factor
+                b1.vx -= force * cos;
+                b1.vy -= force * sin;
+                b2.vx += force * cos;
+                b2.vy += force * sin;
+            }
+        }
+
+        function mergeBalls(idx1, idx2, x, y, newLevel) {
+            playSound('merge');
+            
+            // Remove balls (higher index first to not mess up array)
+            balls.splice(idx2, 1);
+            balls.splice(idx1, 1);
+
+            // Add score
+            score += LEVELS[newLevel].score;
+            document.getElementById('score').textContent = score;
+
+            // Spawn new ball
+            balls.push({
+                x: x,
+                y: y,
+                vx: 0,
+                vy: 0,
+                level: newLevel,
+                radius: LEVELS[newLevel].radius,
+                emoji: LEVELS[newLevel].emoji,
+                mass: LEVELS[newLevel].radius,
+                id: Math.random()
+            });
+
+            // Trigger Win if Max Level Reached
+            if (newLevel === LEVELS.length - 1) {
+                setTimeout(triggerWin, 1000);
+            }
+        }
+
+        function drawBalls() {
+            balls.forEach(b => {
+                ctx.beginPath();
+                // Draw Emoji
+                ctx.font = `${b.radius * 1.5}px Arial`; // Use Arial for standard Emoji rendering
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#fff";
+                ctx.fillText(b.emoji, b.x, b.y + (b.radius * 0.1)); 
+                
+                // Optional: Debug Circle
+                // ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                // ctx.strokeStyle = "rgba(255,255,255,0.2)";
+                // ctx.stroke();
+            });
+        }
+
+        function triggerWin() {
+            isGameOver = true;
+            playSound('win');
+            document.getElementById('game-ui').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('game-ui').classList.remove('active');
+                document.getElementById('win-screen').classList.add('active');
+                typeText();
+            }, 1000);
+        }
+
+        function typeText() {
+            const el = document.getElementById('typewriter-area');
+            el.textContent = "";
+            let i = 0;
+            function type() {
+                if(i < finalMessage.length) {
+                    el.textContent += finalMessage.charAt(i);
+                    i++;
+                    el.scrollTop = el.scrollHeight;
+                    setTimeout(type, 40);
+                }
+            }
+            type();
+        }
+
+    </script>
+</body>
+</html>
